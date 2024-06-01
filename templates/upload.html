@@ -1,0 +1,20 @@
+{% extends "layout.html" %}
+
+{% block content %}
+    <div class="row justify-content-center">
+        <div class="col-6 mt-4">
+            <form class="card" action="/upload" method="post" enctype="multipart/form-data">
+                
+                <h4 class="card-header">Upload File</h4>
+                
+                <div class="card-body">
+                    <input class="form-control" type="file" name="file">
+                </div>
+                <div class="card-footer text-end">
+                    <a class="btn btn-secondary" href="/">Cancel</a>
+                    <button class="btn btn-primary" type="submit">Upload</button>
+                </div>
+            </form>
+        </div>
+    </div>
+{% endblock %}
