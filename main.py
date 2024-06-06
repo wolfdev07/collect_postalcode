@@ -7,6 +7,8 @@ app = Flask(__name__)
 # Asegúrate de que el directorio de carga exista
 STATIC_ROOT = 'static/'
 
+zelda = os.path.join(app.config['STATIC_FILES'], 'data', 'collection.xls')
+
 if not os.path.exists(STATIC_ROOT):
     os.makedirs(STATIC_ROOT)
 
@@ -49,7 +51,7 @@ def download_file():
 @app.route('/update_database')
 def update_database():
     # Llama a collect_data con el nombre del archivo
-    zelda = os.path.join(app.config['STATIC_FILES'], 'data', 'collection.xls')
+    
     collect_data(zelda)
     return 'Database updated successfully'
 
