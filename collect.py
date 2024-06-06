@@ -2,8 +2,6 @@ import pandas as pd
 import unicodedata
 from utils import get_db_connection
 
-
-
 def vector_build(word):
     # Convertir la palabra a string
     if type(word) is not str:
@@ -17,8 +15,6 @@ def vector_build(word):
     # Quitar todo lo que no sea letra o "_"
     word = ''.join(c for c in word if c.isalnum() or c == "_")
     return word
-
-
 
 def create_zip_code_records(file_url, sheet_name):
     data = pd.read_excel(file_url, sheet_name)
@@ -43,58 +39,53 @@ def create_zip_code_records(file_url, sheet_name):
     else:
         print(f'State {sheet_name} already exists')
 
-    # Insert Municipalities
+    # Insertar municipios
     for municipality_name in municipalities:
-        
-        # HACER EL VECTOR DE BUSQUEDA
         municipality_vector_name = vector_build(municipality_name)
-
-        # INSERTAR MUNICIPIOS
         cur.execute("SELECT id FROM zip_codes_mx_municipality WHERE state_id = %s AND name = %s", (sheet_name, municipality_name))
         municipality = cur.fetchone()
-        
         if municipality is None:
             cur.execute("INSERT INTO zip_codes_mx_municipality (state_id, name, search_vector) VALUES (%s, %s, to_tsvector(%s))",
                         (sheet_name, municipality_name, municipality_vector_name))
             conn.commit()
             print(f'Municipality {municipality_name} created')
 
-    # INSERTAR CIUDADES
+    # Insert Cities
     for city_name in cities:
-        
-        
-        city_name_vector = vector_build(city_name)
+        if pd.notna(city_name):
+            city_name_vector = vector_build(city_name)
+        else:
+            # Si city_name está vacío, usar municipality_name
+            city_name = municipality_name
+            city_name_vector = vector_build(municipality_name)
 
         for _, row in data[data['d_ciudad'] == city_name].iterrows():
-            
             municipality_name = row['D_mnpio']
             municipality_vector_name = vector_build(municipality_name)
-
             cur.execute("SELECT id FROM zip_codes_mx_municipality WHERE state_id = %s AND search_vector = %s", (sheet_name, municipality_vector_name))
-            
             municipality = cur.fetchone()
-            
             if municipality:
-                cur.execute("SELECT id FROM zip_codes_mx_city WHERE municipality_id = %s AND name = %s", (municipality[0], city_name))
-                city = cur.fetchone()
-                if city is None:
-
-                    if city_name == None:
-                        cur.execute("INSERT INTO zip_codes_mx_city (municipality_id, name, search_vector) VALUES (%s, %s, to_tsvector(%s))",
-                                    (municipality[0], municipality_name, city_name_vector))
-                    
-                    else:
+                try:
+                    cur.execute("SELECT id FROM zip_codes_mx_city WHERE municipality_id = %s AND name = %s", (municipality[0], city_name))
+                    city = cur.fetchone()
+                    if city is None:
+                        # Crear registro de ciudad con municipality_name y su vector
                         cur.execute("INSERT INTO zip_codes_mx_city (municipality_id, name, search_vector) VALUES (%s, %s, to_tsvector(%s))",
                                     (municipality[0], city_name, city_name_vector))
-                    
-                    conn.commit()
-                    print(f'City {municipality_name} created')
+                        conn.commit()
+                        print(f'City {city_name} created')
+                except Exception as e:
+                    print(f'Error creating city: {e}')
 
     # Insert Postal Codes and Settlements
     for _, row in data.iterrows():
         code = str(row['d_codigo']).zfill(5) if sheet_name == 9 else str(row['d_codigo'])
-        
         city_name = row['d_ciudad']
+        municipality_name = row['D_mnpio']
+        
+        # Si city_name está vacío, usar municipality_name
+        if not pd.notna(city_name):
+            city_name = municipality_name
 
         cur.execute("SELECT id FROM zip_codes_mx_city WHERE name = %s", (city_name,))
         city = cur.fetchone()
@@ -107,15 +98,13 @@ def create_zip_code_records(file_url, sheet_name):
                 cur.execute("SELECT id FROM zip_codes_mx_postalcode WHERE city_id = %s AND code = %s", (city[0], code))
                 postal_code = cur.fetchone()
                 print(f'PostalCode {code} created')
-
+            
             settlement_name = row['d_asenta']
             settlement_name_vector = vector_build(settlement_name)
             settlement_type = row['d_tipo_asenta']
-            
             cur.execute("SELECT id FROM zip_codes_mx_settlement WHERE postal_code_id = %s AND name = %s AND settlement_type = %s",
                         (postal_code[0], settlement_name, settlement_type))
             settlement = cur.fetchone()
-            
             if settlement is None:
                 cur.execute("INSERT INTO zip_codes_mx_settlement (postal_code_id, name, settlement_type, search_vector) VALUES (%s, %s, %s, to_tsvector(%s))",
                             (postal_code[0], settlement_name, settlement_type, settlement_name_vector))
@@ -126,5 +115,5 @@ def create_zip_code_records(file_url, sheet_name):
     conn.close()
 
 def collect_data(url):
-    for index in range(1, 2):
+    for index in range(3, 4):
         create_zip_code_records(url, index)
