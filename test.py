@@ -36,6 +36,7 @@ def create_state(state_name, entity_number):
     else:
         print(f'State {state[1]} already exists')
     
+    conn.close()
     return state
 
 
@@ -61,6 +62,7 @@ def create_municipality(municipality_name, state_id):
     else:
         print(f'Municipality {municipality[1]} already exists')
     
+    conn.close()
     return municipality
 
 
@@ -86,6 +88,9 @@ def create_city(cities_list, municipality_id):
             print(f'City {city_cursor[1]} created')
         else:
             print(f'City {city} already exists')
+    
+    conn.close()
+
 
 
 def create_postal_code(postal_code, municipality_id):
@@ -107,7 +112,8 @@ def create_postal_code(postal_code, municipality_id):
         print(f'Postal code {postal_code_cursor[1]} created')
     else:
         print(f'Postal code {postal_code_cursor[1]} already exists')
-        
+    
+    conn.close()
     return postal_code_cursor
 
 
@@ -137,7 +143,8 @@ def create_settlement(settlement_list, postal_code_id):
             print(f'Settlement {settlement_cursor[1]} created')
         else:
             print(f'Settlement {settlement_cursor[1]} already exists')
-
+    
+    conn.close()
 
 
 
@@ -150,7 +157,6 @@ def create_zip_code_records(url, entity_number):
     cities = data['d_ciudad'].dropna().unique()
     postal_codes = data['d_codigo'].unique()
     settlements = data['d_asenta'].unique()
-
 
     # ALMACENAR CIUDADES POR MUNICIPIO Y CODIGOS POSTALES
     municipality_city_dict = {}
@@ -223,5 +229,11 @@ def create_zip_code_records(url, entity_number):
         print(f"Numero de Ciudades {len(cities)}")
         print(f"Settlements repetidos {settlement_repeat_list}")
 
+        value_counts =  data["d_asenta"].value_counts()
+        repeated_values = value_counts[value_counts > 1]
+        repeated_values_list = repeated_values.index.tolist()
+        
+        print(f"Settlements repetidos {repeated_values_list}")
+        print(f"Settlements Cantidad {len(repeated_values_list)}")
 
 create_zip_code_records(zelda, 3)
